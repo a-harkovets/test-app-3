@@ -3,7 +3,7 @@ import Toast from 'react-native-root-toast';
 import React, { Component, ReactElement } from 'react';
 
 import MapView, { LatLng, MapEvent, Marker } from 'react-native-maps';
-import { ActivityIndicator, SafeAreaView, Text, View } from 'react-native';
+import { ActivityIndicator, SafeAreaView, StatusBar, Text, View } from 'react-native';
 
 import styles from './styles';
 import { AppState } from './types';
@@ -27,6 +27,8 @@ class App extends Component<{}, AppState> {
     const { address, coordinates, isFetching } = this.state;
 
     return <SafeAreaView>
+      <StatusBar backgroundColor='#ffffff' barStyle='dark-content' />
+
       <View style={styles.header}>
         <Text style={styles.headerMessage}>
           Нажмите на любое место карты. Адрес будет отображен ниже.

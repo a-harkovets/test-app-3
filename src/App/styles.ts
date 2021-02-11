@@ -22,7 +22,7 @@ const map: ViewStyle = {
 
 
 const footer: ViewStyle = {
-  height: 210,
+  height: 200,
   width: '100%',
   alignItems: 'center',
   justifyContent: 'center',
