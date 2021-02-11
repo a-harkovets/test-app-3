@@ -1,9 +1,11 @@
 import axios from 'axios';
+import Toast from 'react-native-root-toast';
 import React, { Component, ReactElement } from 'react';
 
 import MapView, { LatLng, MapEvent, Marker } from 'react-native-maps';
-import { ActivityIndicator, Dimensions, SafeAreaView, Text, View } from 'react-native';
+import { ActivityIndicator, SafeAreaView, Text, View } from 'react-native';
 
+import styles from './styles';
 import { AppState } from './types';
 
 
@@ -24,75 +26,45 @@ class App extends Component<{}, AppState> {
   render(): ReactElement {
     const { address, coordinates, isFetching } = this.state;
 
-    const showPlaceholder = !coordinates;
-    const showLoader = !!isFetching;
-    const showAddress = !!address && !isFetching;
-
     return <SafeAreaView>
-      <View style={{
-        width: '100%',
-        height: 100,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <Text style={{
-          fontSize: 16,
-          textAlign: 'center',
-          maxWidth: 320,
-        }}>
+      <View style={styles.header}>
+        <Text style={styles.headerMessage}>
           Нажмите на любое место карты. Адрес будет отображен ниже.
         </Text>
       </View>
 
-      <View style={{
-        height: Dimensions.get('screen').height - 360,
-      }}>
-        <MapView
-          onPress={this._handlePress}
-          initialRegion={{
-            latitude: 50.000948,
-            longitude: 36.234611,
-            latitudeDelta: 0.0226,
-            longitudeDelta: 0.0105,
-          }}
-          style={{
-            height: '100%',
-          }}
-        >
-          {
-            coordinates &&
-            <Marker
-              coordinate={coordinates}
-            />
-          }
-        </MapView>
-      </View>
-
-      <View style={{
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        height: 210,
-      }}>
+      <MapView
+        style={styles.map}
+        onPress={this._handlePress}
+        initialRegion={{
+          latitude: 50.000948,
+          longitude: 36.234611,
+          latitudeDelta: 0.0226,
+          longitudeDelta: 0.0105,
+        }}
+      >
         {
-          showPlaceholder &&
-          <Text style={{
-            fontSize: 16,
-          }}>
+          coordinates &&
+          <Marker coordinate={coordinates} />
+        }
+      </MapView>
+
+      <View style={styles.footer}>
+        {
+          !coordinates &&
+          <Text style={styles.footerMesage}>
             Метка не установлена.
           </Text>
         }
+
         {
-          showLoader &&
+          isFetching &&
           <ActivityIndicator />
         }
+
         {
-          showAddress &&
-          <Text style={{
-            fontSize: 16,
-            textAlign: 'center',
-            maxWidth: 360,
-          }}>
+          !!address && !isFetching &&
+          <Text style={styles.footerMesage}>
             {address}
           </Text>
         }
@@ -102,16 +74,21 @@ class App extends Component<{}, AppState> {
 
 
   private _handlePress = async (event: MapEvent): Promise<void> => {
-    this.setState({ coordinates: event.nativeEvent.coordinate });
+    const { isFetching } = this.state;
+    if (isFetching)
+      return Toast.show('Дождитесь окончания загрузки!');
 
     try {
-      this.setState({ isFetching: true });
+      this.setState({ coordinates: event.nativeEvent.coordinate, isFetching: true });
       const address = await this._fetchAddress(event.nativeEvent.coordinate);
       this.setState({ address });
 
     } catch (error) {
-      // TODO: show toast.
-      console.warn(error);
+      if (error instanceof Error)
+        Toast.show(error.message);
+      else
+        Toast.show('Произошла неизвестная ошибка!');
+      this.setState({ address: '', coordinates: null });
 
     } finally {
       this.setState({ isFetching: false });
@@ -122,7 +99,7 @@ class App extends Component<{}, AppState> {
   private _fetchAddress = async (coordinates: LatLng): Promise<string> => {
     const response = await axios({
       method: 'GET',
-      timeout: 4000,
+      timeout: 3000,
       url: 'https://api.opencagedata.com/geocode/v1/json',
       params: {
         key: API_KEY,
@@ -144,12 +121,13 @@ class App extends Component<{}, AppState> {
     ) throw new Error('Ошибка определения адреса.');
 
     const [{ components }] = response.data.results;
-    const addressFirstLine =
-      `${components.country} ${components.state || ''} \n`;
-    const addressSecondLine = `${components.city ? `${components.city},` : ''}`
-      + ` ${components.road || ''} ${components.house_number || ''}`;
 
-    return `${addressFirstLine}${addressSecondLine}`;
+    const city = components.city || '';
+    const road = components.road || '';
+    const house = components.house_number || '';
+    const globalLocation = `${components.country} ${components.state || ''}`;
+
+    return `${globalLocation}\n${city}${road ? ',' : ''} ${road} ${house}`;
   }
 }
 
